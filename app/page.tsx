@@ -25,18 +25,18 @@ import {
 // Define the expected structure of the results from the backend API
 interface MatchResults {
   matchScore: number
-  matchedSkills: string[]
+  goodSkills: string[] // This must be an array
   missingSkills: string[]
-  suggestions: string[]
+  suggestions: string[] // THIS MUST BE AN ARRAY
 }
 
 export default function ResumeMatcherPage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeText, setResumeText] = useState("")
   const [isProcessingPDF, setIsProcessingPDF] = useState(false)
-  const [pdfProcessingProgress, setPdfProcessingProgress] = useState(0) // State for PDF processing progress
+  const [pdfProcessingProgress, setPdfProcessingProgress] = useState(0)
   const [jobDescription, setJobDescription] = useState("")
-  const [results, setResults] = useState<MatchResults | null>(null) // Explicitly type results
+  const [results, setResults] = useState<MatchResults | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [animatedScore, setAnimatedScore] = useState(0)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -66,16 +66,15 @@ export default function ResumeMatcherPage() {
   // --- PDF Processing Integration ---
   const processPDFFile = async (file: File) => {
     setIsProcessingPDF(true)
-    setPdfProcessingProgress(0) // Reset progress at the start
+    setPdfProcessingProgress(0)
 
     const formData = new FormData()
-    formData.append("file", file) // Append the actual file to FormData
+    formData.append("file", file)
 
     try {
-      // Call your backend API for PDF processing (e.g., /api/upload)
-      const response = await fetch("/api/upload", { // Ensure this matches your backend route
+      const response = await fetch("/api/upload", {
         method: "POST",
-        body: formData, // Send FormData with the file
+        body: formData,
       })
 
       if (!response.ok) {
@@ -84,14 +83,14 @@ export default function ResumeMatcherPage() {
       }
 
       const data = await response.json()
-      setResumeText(data.resumeText || data.text) // Accept either 'resumeText' or 'text' from backend
-      setPdfProcessingProgress(100) // Set progress to 100% on success
+      setResumeText(data.resumeText || data.text)
+      setPdfProcessingProgress(100)
     } catch (error: any) {
       console.error("Error processing PDF:", error)
       alert(`Error processing PDF file: ${error.message}. Please try again.`)
-      setResumeFile(null) // Clear the file selection on error
-      setResumeText("") // Clear any partial text
-      setPdfProcessingProgress(0); // Reset progress
+      setResumeFile(null)
+      setResumeText("")
+      setPdfProcessingProgress(0);
     } finally {
       setIsProcessingPDF(false)
     }
@@ -134,8 +133,8 @@ export default function ResumeMatcherPage() {
   const removeFile = () => {
     setResumeFile(null)
     setResumeText("")
-    setPdfProcessingProgress(0) // Reset progress when file is removed
-    setResults(null); // Clear results when file is removed
+    setPdfProcessingProgress(0)
+    setResults(null);
   }
 
   // --- AI Analysis Integration ---
@@ -147,16 +146,15 @@ export default function ResumeMatcherPage() {
 
     setIsAnalyzing(true)
     setAnimatedScore(0)
-    setResults(null) // Clear previous results immediately
+    setResults(null)
 
     try {
-      // Call your backend API for AI analysis (e.g., /api/match)
-      const response = await fetch("/api/match", { // Ensure this matches your backend route
+      const response = await fetch("/api/match", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ resumeText, jobDescription }), // Send JSON payload
+        body: JSON.stringify({ resumeText, jobDescription }),
       })
 
       if (!response.ok) {
@@ -164,7 +162,9 @@ export default function ResumeMatcherPage() {
         throw new Error(errorData.error || "Failed to analyze match.")
       }
 
-      const data: MatchResults = await response.json() // Type assertion for safety
+      const data: MatchResults = await response.json()
+      // Add a console log here to inspect the received data
+      console.log("Received match results from backend:", data);
       setResults(data)
     } catch (error: any) {
       console.error("Error during match analysis:", error)
@@ -180,7 +180,7 @@ export default function ResumeMatcherPage() {
     setResumeText("")
     setJobDescription("")
     setAnimatedScore(0)
-    setPdfProcessingProgress(0) // Reset progress on full reset
+    setPdfProcessingProgress(0)
   }
 
   return (
@@ -284,7 +284,7 @@ export default function ResumeMatcherPage() {
                         <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 border-b-2 border-amber-600"></div>
                         <span className="font-medium text-amber-700 text-sm sm:text-base">Processing PDF...</span>
                       </div>
-                      <Progress value={pdfProcessingProgress} className="h-1.5 sm:h-2" /> {/* Use dynamic progress */}
+                      <Progress value={pdfProcessingProgress} className="h-1.5 sm:h-2" />
                     </div>
                   )}
 
@@ -345,7 +345,6 @@ export default function ResumeMatcherPage() {
         <div className="text-center mb-6 sm:mb-8 lg:mb-12">
           <Button
             onClick={analyzeMatch}
-            // Disable if PDF is processing, or either resume text or job description is empty
             disabled={isAnalyzing || isProcessingPDF || !resumeText.trim() || !jobDescription.trim()}
             size="lg"
             className="bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 hover:from-violet-700 hover:via-purple-700 hover:to-blue-700 text-white px-6 sm:px-8 lg:px-12 py-3 sm:py-4 text-base sm:text-lg lg:text-xl font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 w-full sm:w-auto"
@@ -418,12 +417,12 @@ export default function ResumeMatcherPage() {
                     <div className="p-1.5 sm:p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg text-white">
                       <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                     </div>
-                    <span className="truncate">Matched Skills ({results.matchedSkills.length})</span>
+                    <span className="truncate">Matched Skills ({results.goodSkills.length})</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 sm:px-6">
                   <div className="flex flex-wrap gap-2 sm:gap-3">
-                    {results.matchedSkills.map((skill, index) => (
+                    {results.goodSkills.map((skill, index) => (
                       <Badge
                         key={index}
                         className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 hover:from-green-200 hover:to-emerald-200 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 text-xs sm:text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-in slide-in-from-left-2"
@@ -476,20 +475,26 @@ export default function ResumeMatcherPage() {
               </CardHeader>
               <CardContent className="px-3 sm:px-6">
                 <div className="space-y-3 sm:space-y-4">
-                  {results.suggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 bg-gradient-to-r from-amber-50/50 to-orange-50/50 rounded-xl border-l-4 border-amber-400 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] animate-in slide-in-from-bottom-2"
-                      style={{ animationDelay: `${index * 200}ms` }}
-                    >
-                      <div className="p-1.5 sm:p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg text-white flex-shrink-0">
-                        <Lightbulb className="h-3 w-3 sm:h-4 sm:w-4" />
+                  {/* FIX: Ensure results.suggestions is an array before mapping */}
+                  {results.suggestions && Array.isArray(results.suggestions) && results.suggestions.length > 0 ? (
+                    results.suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 bg-gradient-to-r from-amber-50/50 to-orange-50/50 rounded-xl border-l-4 border-amber-400 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] animate-in slide-in-from-bottom-2"
+                        style={{ animationDelay: `${index * 200}ms` }}
+                      >
+                        <div className="p-1.5 sm:p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg text-white flex-shrink-0">
+                          <Lightbulb className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </div>
+                        <p className="text-gray-700 leading-relaxed font-medium text-xs sm:text-sm lg:text-base">
+                          {suggestion}
+                        </p>
                       </div>
-                      <p className="text-gray-700 leading-relaxed font-medium text-xs sm:text-sm lg:text-base">
-                        {suggestion}
-                      </p>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    // Fallback if suggestions is not an array or is empty
+                    <p className="text-gray-500 text-sm">No specific suggestions available at this time.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

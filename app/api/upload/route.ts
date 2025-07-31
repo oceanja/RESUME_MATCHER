@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
-import * as pdfToText from 'pdf-to-text'; // <--- Changed import: import everything as 'pdfToText'
+import * as pdfToText from 'pdf-to-text';
 
 // Define a temporary directory for file uploads
 const UPLOAD_DIR = path.resolve(process.cwd(), 'tmp_uploads');
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
     // --- Using pdf-to-text here ---
     const extractedText: string = await new Promise((resolve, reject) => {
-      // Changed call: Access 'toText' property from 'pdfToText' object
-      pdfToText.toText(filePath, (err: Error | null, data: string | undefined) => { // <--- Changed call here
+      // *** IMPORTANT FIX HERE: Change 'toText' to 'pdfToText' ***
+      pdfToText.pdfToText(filePath, (err: Error | null, data: string | undefined) => {
         if (err) {
           reject(err);
         } else if (data === undefined) {
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ resumeText: extractedText }, { status: 200 });
   } catch (error) {
     console.error('Error processing PDF:', error);
+    // This part of your error handling is excellent!
     if (error instanceof Error && error.message.includes('Command failed') && error.message.includes('pdftotext')) {
        return NextResponse.json({ error: 'PDF conversion failed. Is pdftotext installed and in your PATH?' }, { status: 500 });
     }
