@@ -25,9 +25,9 @@ import {
 // Define the expected structure of the results from the backend API
 interface MatchResults {
   matchScore: number
-  goodSkills: string[] // This must be an array
+  goodSkills: string[]
   missingSkills: string[]
-  suggestions: string[] // THIS MUST BE AN ARRAY
+  suggestions: string[]
 }
 
 export default function ResumeMatcherPage() {
@@ -40,6 +40,9 @@ export default function ResumeMatcherPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [animatedScore, setAnimatedScore] = useState(0)
   const [isDragOver, setIsDragOver] = useState(false)
+
+  // NEW: input mode toggle
+  const [inputMode, setInputMode] = useState<"upload" | "paste">("upload")
 
   // Animate score when results are available
   useEffect(() => {
@@ -90,7 +93,7 @@ export default function ResumeMatcherPage() {
       alert(`Error processing PDF file: ${error.message}. Please try again.`)
       setResumeFile(null)
       setResumeText("")
-      setPdfProcessingProgress(0);
+      setPdfProcessingProgress(0)
     } finally {
       setIsProcessingPDF(false)
     }
@@ -134,13 +137,13 @@ export default function ResumeMatcherPage() {
     setResumeFile(null)
     setResumeText("")
     setPdfProcessingProgress(0)
-    setResults(null);
+    setResults(null)
   }
 
   // --- AI Analysis Integration ---
   const analyzeMatch = async () => {
     if (!resumeText.trim() || !jobDescription.trim()) {
-      alert("Please upload a resume and fill in the job description.")
+      alert("Please add resume text (upload or paste) and fill in the job description.")
       return
     }
 
@@ -151,9 +154,7 @@ export default function ResumeMatcherPage() {
     try {
       const response = await fetch("/api/match", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resumeText, jobDescription }),
       })
 
@@ -163,8 +164,7 @@ export default function ResumeMatcherPage() {
       }
 
       const data: MatchResults = await response.json()
-      // Add a console log here to inspect the received data
-      console.log("Received match results from backend:", data);
+      console.log("Received match results from backend:", data)
       setResults(data)
     } catch (error: any) {
       console.error("Error during match analysis:", error)
@@ -181,11 +181,12 @@ export default function ResumeMatcherPage() {
     setJobDescription("")
     setAnimatedScore(0)
     setPdfProcessingProgress(0)
+    setInputMode("upload")
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-blue-50 to-cyan-50 relative overflow-hidden">
-      {/* Responsive Animated Background Elements */}
+      {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-20 -right-20 sm:-top-40 sm:-right-40 w-40 h-40 sm:w-80 sm:h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-20 -left-20 sm:-bottom-40 sm:-left-40 w-40 h-40 sm:w-80 sm:h-80 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -193,7 +194,7 @@ export default function ResumeMatcherPage() {
       </div>
 
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 max-w-7xl relative z-10">
-        {/* Responsive Enhanced Header */}
+        {/* Header */}
         <div className="text-center mb-6 sm:mb-8 lg:mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 mb-4 sm:mb-6">
             <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 animate-pulse" />
@@ -203,116 +204,175 @@ export default function ResumeMatcherPage() {
             Resume & Job Description Matcher
           </h1>
           <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-xs sm:max-w-2xl lg:max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
-            Leverage advanced AI to analyze how well your resume matches job requirements and get actionable insights to
-            boost your application success rate.
+            Upload your resume as a PDF or paste the text directly—then compare against a job description for instant, actionable insights.
           </p>
         </div>
 
-        {/* Responsive Enhanced Input Section */}
+        {/* Inputs */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8 lg:mb-12">
-          {/* Responsive Enhanced Resume Upload */}
+          {/* Resume Input (Upload / Paste) */}
           <Card className="group shadow-lg sm:shadow-xl lg:shadow-2xl border-0 bg-white/40 backdrop-blur-md hover:bg-white/50 transition-all duration-500 hover:shadow-2xl lg:hover:shadow-3xl hover:-translate-y-0.5 lg:hover:-translate-y-1">
             <CardHeader className="pb-4 sm:pb-6">
-              <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
-                <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg text-white">
-                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+              <CardTitle className="flex items-center justify-between gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg text-white">
+                    <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                  </div>
+                  <span className="truncate">Resume Input</span>
                 </div>
-                <span className="truncate">Upload Resume (PDF)</span>
+
+                {/* Segmented control */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={inputMode === "upload" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setInputMode("upload")}
+                  >
+                    Upload PDF
+                  </Button>
+                  <Button
+                    variant={inputMode === "paste" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setInputMode("paste")
+                      setResumeFile(null)
+                      setPdfProcessingProgress(0)
+                      setIsProcessingPDF(false)
+                    }}
+                  >
+                    Paste Text
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
+
             <CardContent className="px-3 sm:px-6">
-              {!resumeFile ? (
-                <div
-                  className={`border-2 border-dashed rounded-xl p-4 sm:p-6 lg:p-8 text-center transition-all duration-300 cursor-pointer ${
-                    isDragOver
-                      ? "border-blue-500 bg-blue-50/50 scale-105"
-                      : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/30"
-                  }`}
-                  onDrop={handleFileDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => document.getElementById("resume-upload")?.click()}
-                >
-                  <div className={`transition-all duration-300 ${isDragOver ? "scale-110" : ""}`}>
-                    <Upload
-                      className={`h-8 w-8 sm:h-12 sm:w-12 lg:h-16 lg:w-16 mx-auto mb-2 sm:mb-4 transition-colors duration-300 ${
-                        isDragOver ? "text-blue-500" : "text-gray-400"
-                      }`}
-                    />
-                    <p className="text-sm sm:text-lg lg:text-xl font-semibold text-gray-700 mb-1 sm:mb-2">
-                      {isDragOver ? "Drop your resume here!" : "Drop resume or click to browse"}
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-6">Supports PDF files up to 10MB</p>
-                    <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5">
-                      <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      Choose PDF File
-                    </Button>
+              {inputMode === "upload" ? (
+                // ======== UPLOAD MODE ========
+                !resumeFile ? (
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-4 sm:p-6 lg:p-8 text-center transition-all duration-300 cursor-pointer ${
+                      isDragOver
+                        ? "border-blue-500 bg-blue-50/50 scale-105"
+                        : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/30"
+                    }`}
+                    onDrop={handleFileDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => document.getElementById("resume-upload")?.click()}
+                  >
+                    <div className={`transition-all duration-300 ${isDragOver ? "scale-110" : ""}`}>
+                      <Upload
+                        className={`h-8 w-8 sm:h-12 sm:w-12 lg:h-16 lg:w-16 mx-auto mb-2 sm:mb-4 transition-colors duration-300 ${
+                          isDragOver ? "text-blue-500" : "text-gray-400"
+                        }`}
+                      />
+                      <p className="text-sm sm:text-lg lg:text-xl font-semibold text-gray-700 mb-1 sm:mb-2">
+                        {isDragOver ? "Drop your resume here!" : "Drop resume or click to browse"}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-6">
+                        Supports PDF files up to ~4.5MB (serverless limit)
+                      </p>
+                      <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5">
+                        <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        Choose PDF File
+                      </Button>
+                    </div>
+                    <input id="resume-upload" type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
                   </div>
-                  <input id="resume-upload" type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-                </div>
+                ) : (
+                  <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+                    {/* File Info */}
+                    <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200/50 shadow-lg">
+                      <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-1">
+                        <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg text-white shadow-lg flex-shrink-0">
+                          <File className="h-4 w-4 sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-900 text-sm sm:text-base lg:text-lg truncate">
+                            {resumeFile.name}
+                          </p>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={removeFile}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-all duration-200 hover:scale-110 flex-shrink-0 p-2"
+                      >
+                        <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </Button>
+                    </div>
+
+                    {/* Processing */}
+                    {isProcessingPDF && (
+                      <div className="p-3 sm:p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/50 shadow-lg">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                          <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 border-b-2 border-amber-600"></div>
+                          <span className="font-medium text-amber-700 text-sm sm:text-base">Processing PDF...</span>
+                        </div>
+                        <Progress value={pdfProcessingProgress} className="h-1.5 sm:h-2" />
+                      </div>
+                    )}
+
+                    {/* Preview */}
+                    {resumeText && !isProcessingPDF && (
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                          <label className="font-medium text-gray-700 text-sm sm:text-base">
+                            Extracted Text Preview:
+                          </label>
+                        </div>
+                        <div className="max-h-32 sm:max-h-40 lg:max-h-48 overflow-y-auto p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl border border-gray-200/50 text-xs sm:text-sm text-gray-700 shadow-inner">
+                          {resumeText.substring(0, 500)}
+                          {resumeText.length > 500 && "..."}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Target className="h-3 w-3" />
+                          {resumeText.length} characters extracted successfully
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
               ) : (
-                <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-                  {/* Responsive Enhanced File Info */}
-                  <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200/50 shadow-lg">
-                    <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-1">
-                      <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg text-white shadow-lg flex-shrink-0">
-                        <File className="h-4 w-4 sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-sm sm:text-base lg:text-lg truncate">
-                          {resumeFile.name}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={removeFile}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-all duration-200 hover:scale-110 flex-shrink-0 p-2"
-                    >
-                      <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </Button>
+                // ======== PASTE MODE ========
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm text-gray-700">
+                      Paste your resume text below. We’ll use this instead of a PDF.
+                    </span>
                   </div>
-
-                  {/* Responsive Enhanced Processing Status */}
-                  {isProcessingPDF && (
-                    <div className="p-3 sm:p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/50 shadow-lg">
-                      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 border-b-2 border-amber-600"></div>
-                        <span className="font-medium text-amber-700 text-sm sm:text-base">Processing PDF...</span>
-                      </div>
-                      <Progress value={pdfProcessingProgress} className="h-1.5 sm:h-2" />
-                    </div>
-                  )}
-
-                  {/* Responsive Enhanced Text Preview */}
-                  {resumeText && !isProcessingPDF && (
-                    <div className="space-y-2 sm:space-y-3">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                        <label className="font-medium text-gray-700 text-sm sm:text-base">
-                          Extracted Text Preview:
-                        </label>
-                      </div>
-                      <div className="max-h-32 sm:max-h-40 lg:max-h-48 overflow-y-auto p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl border border-gray-200/50 text-xs sm:text-sm text-gray-700 shadow-inner">
-                        {resumeText.substring(0, 500)}
-                        {resumeText.length > 500 && "..."}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Target className="h-3 w-3" />
-                        {resumeText.length} characters extracted successfully
-                      </div>
-                    </div>
-                  )}
+                  <Textarea
+                    placeholder="Paste your resume text here..."
+                    value={resumeText}
+                    onChange={(e) => setResumeText(e.target.value)}
+                    className="min-h-[220px] resize-y border-gray-200/50 focus:border-blue-500 focus:ring-blue-500/20 bg-white/60"
+                  />
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">{resumeText.length} characters</p>
+                    {resumeText && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setResumeText("")}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Responsive Enhanced Job Description Input */}
+          {/* Job Description Input */}
           <Card className="group shadow-lg sm:shadow-xl lg:shadow-2xl border-0 bg-white/40 backdrop-blur-md hover:bg-white/50 transition-all duration-500 hover:shadow-2xl lg:hover:shadow-3xl hover:-translate-y-0.5 lg:hover:-translate-y-1">
             <CardHeader className="pb-4 sm:pb-6">
               <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl lg:text-2xl">
@@ -327,7 +387,7 @@ export default function ResumeMatcherPage() {
                 placeholder="Copy and paste the job description here..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                className="min-h-[200px] sm:min-h-[280px] lg:min-h-[350px] resize-none border-gray-200/50 focus:border-green-500 focus:ring-green-500/20 bg-white/50 backdrop-blur-sm transition-all duration-300 hover:bg-white/70 text-sm sm:text-base"
+                className="min-h=[200px] sm:min-h-[280px] lg:min-h-[350px] resize-none border-gray-200/50 focus:border-green-500 focus:ring-green-500/20 bg-white/50 backdrop-blur-sm transition-all duration-300 hover:bg-white/70 text-sm sm:text-base"
               />
               <div className="flex items-center justify-between mt-2 sm:mt-3">
                 <p className="text-xs sm:text-sm text-gray-500">{jobDescription.length} characters</p>
@@ -341,7 +401,7 @@ export default function ResumeMatcherPage() {
           </Card>
         </div>
 
-        {/* Responsive Enhanced Action Buttons */}
+        {/* Actions */}
         <div className="text-center mb-6 sm:mb-8 lg:mb-12">
           <Button
             onClick={analyzeMatch}
@@ -350,14 +410,12 @@ export default function ResumeMatcherPage() {
             className="bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 hover:from-violet-700 hover:via-purple-700 hover:to-blue-700 text-white px-6 sm:px-8 lg:px-12 py-3 sm:py-4 text-base sm:text-lg lg:text-xl font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 w-full sm:w-auto"
           >
             {isAnalyzing ? (
-              <>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 border-b-2 border-white"></div>
-                  <span className="hidden sm:inline">Analyzing with AI...</span>
-                  <span className="sm:hidden">Analyzing...</span>
-                  <Zap className="h-4 w-4 sm:h-5 sm:w-5 animate-pulse" />
-                </div>
-              </>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 border-b-2 border-white"></div>
+                <span className="hidden sm:inline">Analyzing with AI...</span>
+                <span className="sm:hidden">Analyzing...</span>
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5 animate-pulse" />
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -380,10 +438,9 @@ export default function ResumeMatcherPage() {
           )}
         </div>
 
-        {/* Responsive Enhanced Results Section */}
+        {/* Results */}
         {results && (
           <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in slide-in-from-bottom-4 duration-1000">
-            {/* Responsive Enhanced Match Score */}
             <Card className="shadow-lg sm:shadow-xl lg:shadow-2xl border-0 bg-gradient-to-br from-white/60 to-blue-50/60 backdrop-blur-md overflow-hidden relative">
               <div className="absolute inset-0 bg-gradient-to-r from-green-400/10 via-blue-400/10 to-purple-400/10"></div>
               <CardContent className="text-center py-6 sm:py-8 lg:py-12 relative z-10 px-4 sm:px-6">
@@ -397,20 +454,20 @@ export default function ResumeMatcherPage() {
                   <div
                     className="bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 h-2 sm:h-3 lg:h-4 rounded-full transition-all duration-2000 ease-out shadow-lg"
                     style={{ width: `${animatedScore}%` }}
-                  ></div>
+                  />
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 mt-3 sm:mt-4">
                   {animatedScore >= 80
                     ? "Excellent match! 🎉"
                     : animatedScore >= 60
-                      ? "Good match! 👍"
-                      : "Room for improvement 📈"}
+                    ? "Good match! 👍"
+                    : "Room for improvement 📈"}
                 </p>
               </CardContent>
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-              {/* Responsive Enhanced Matched Skills */}
+              {/* Matched Skills */}
               <Card className="shadow-lg sm:shadow-xl lg:shadow-2xl border-0 bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-md hover:shadow-2xl lg:hover:shadow-3xl transition-all duration-500">
                 <CardHeader className="pb-3 sm:pb-4">
                   <CardTitle className="flex items-center gap-2 sm:gap-3 text-green-700 text-base sm:text-lg lg:text-xl">
@@ -436,7 +493,7 @@ export default function ResumeMatcherPage() {
                 </CardContent>
               </Card>
 
-              {/* Responsive Enhanced Missing Skills */}
+              {/* Missing Skills */}
               <Card className="shadow-lg sm:shadow-xl lg:shadow-2xl border-0 bg-gradient-to-br from-red-50/80 to-pink-50/80 backdrop-blur-md hover:shadow-2xl lg:hover:shadow-3xl transition-all duration-500">
                 <CardHeader className="pb-3 sm:pb-4">
                   <CardTitle className="flex items-center gap-2 sm:gap-3 text-red-700 text-base sm:text-lg lg:text-xl">
@@ -463,7 +520,7 @@ export default function ResumeMatcherPage() {
               </Card>
             </div>
 
-            {/* Responsive Enhanced Suggestions */}
+            {/* Suggestions */}
             <Card className="shadow-lg sm:shadow-xl lg:shadow-2xl border-0 bg-gradient-to-br from-amber-50/80 to-orange-50/80 backdrop-blur-md hover:shadow-2xl lg:hover:shadow-3xl transition-all duration-500">
               <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="flex items-center gap-2 sm:gap-3 text-amber-700 text-base sm:text-lg lg:text-xl">
@@ -475,7 +532,6 @@ export default function ResumeMatcherPage() {
               </CardHeader>
               <CardContent className="px-3 sm:px-6">
                 <div className="space-y-3 sm:space-y-4">
-                  {/* FIX: Ensure results.suggestions is an array before mapping */}
                   {results.suggestions && Array.isArray(results.suggestions) && results.suggestions.length > 0 ? (
                     results.suggestions.map((suggestion, index) => (
                       <div
@@ -492,7 +548,6 @@ export default function ResumeMatcherPage() {
                       </div>
                     ))
                   ) : (
-                    // Fallback if suggestions is not an array or is empty
                     <p className="text-gray-500 text-sm">No specific suggestions available at this time.</p>
                   )}
                 </div>
